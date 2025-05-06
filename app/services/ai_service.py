@@ -2,26 +2,20 @@ import json
 import random
 from typing import List, Dict, Any, Optional
 import os
-import numpy as np
 import re
 import math
 
-import nltk
-from transformers import AutoTokenizer, AutoModel, pipeline
-from sentence_transformers import SentenceTransformer
-import torch
-from sklearn.metrics.pairwise import cosine_similarity
+# Import custom tokenizer
+from app.services.custom_tokenizer import custom_sent_tokenize, custom_tokenize, get_stopwords
 
 from app.core.config import settings
 from app.models.question import QuestionType
-
-# Import custom tokenizer
-from app.services.custom_tokenizer import custom_sent_tokenize, custom_tokenize, get_stopwords
 
 # Try to import NLTK, but always use our custom tokenizer for sentence splitting
 try:
     import nltk
     nltk.download('stopwords')
+    nltk.download('punkt')
     from nltk.corpus import stopwords
     STOPWORDS = set(stopwords.words('english'))
     
@@ -35,14 +29,14 @@ except ImportError:
     sent_tokenize = custom_sent_tokenize
     word_tokenize = custom_tokenize
 
+# Check if transformers can be imported, but don't import unless needed
 try:
-    from transformers import AutoTokenizer, AutoModel, pipeline
-    from sentence_transformers import SentenceTransformer
     import torch
-    from sklearn.metrics.pairwise import cosine_similarity
+    import numpy as np
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
+    import numpy as np
 
 class AIService:
     """Service for AI-powered operations like hint and solution generation."""
@@ -50,11 +44,17 @@ class AIService:
     def __init__(self):
         """Initialize the AI service."""
         self.use_transformers = TRANSFORMERS_AVAILABLE and settings.USE_AI_MODELS
-        self.device = "cuda" if TRANSFORMERS_AVAILABLE and torch.cuda.is_available() else "cpu"
         
         # Check if we should use models or fallback to template-based generation
         if settings.USE_AI_MODELS and self.use_transformers:
             try:
+                # Only import transformers if we're going to use them
+                from transformers import pipeline
+                from sentence_transformers import SentenceTransformer
+                from sklearn.metrics.pairwise import cosine_similarity
+                
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+                
                 # Load sentence transformer model for embeddings and similarity
                 self.embedding_model = SentenceTransformer('paraphrase-MiniLM-L6-v2', device=self.device)
                 
