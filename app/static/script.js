@@ -34,22 +34,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (generateHintsBtn) {
         generateHintsBtn.addEventListener('click', async function(e) {
             e.preventDefault();
-            if (currentQuestionId) {
-                await generateHints();
-            } else {
-                showError('Please submit or select a question first');
-            }
+            await generateHints();
         });
     }
     
     if (generateSolutionBtn) {
         generateSolutionBtn.addEventListener('click', async function(e) {
             e.preventDefault();
-            if (currentQuestionId) {
-                await generateSolution();
-            } else {
-                showError('Please submit or select a question first');
-            }
+            await generateSolution();
         });
     }
 
@@ -234,8 +226,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // If it looks like a math equation, try the equation solver first
             const isMathProblem = questionTypeSelect.value === 'math' || 
-                                  /[-+*/=]/.test(questionContent) ||
-                                  /solve|equation|find|calculate|x\s*[-+*/=]/.test(questionContent.toLowerCase());
+                                  /[-+*\/=]/.test(questionContent) ||
+                                  /solve|equation|find|calculate|x\s*[-+*\/=]/.test(questionContent.toLowerCase()) ||
+                                  /find[^\w]*x/.test(questionContent.toLowerCase()) ||
+                                  /^x\s*[-+*\/=]/.test(questionContent.toLowerCase()) ||
+                                  /\d+x\s*[-+*\/=]/.test(questionContent.toLowerCase()) ||
+                                  /=\s*\d+$/.test(questionContent);
                                   
             if (isMathProblem) {
                 try {
@@ -398,14 +394,14 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
     }
-    
+
     // Utility functions
     function clearResults() {
         if (analysisResult) analysisResult.innerHTML = '';
         if (hintsResult) hintsResult.innerHTML = '';
         if (solutionResult) solutionResult.innerHTML = '';
     }
-    
+
     function showLoading(message = 'Loading...') {
         // Implementation depends on UI design
         const loadingMessage = document.getElementById('loading-message');
@@ -414,14 +410,14 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingMessage.style.display = 'block';
         }
     }
-    
+
     function hideLoading() {
         const loadingMessage = document.getElementById('loading-message');
         if (loadingMessage) {
             loadingMessage.style.display = 'none';
         }
     }
-    
+
     function showError(message) {
         const errorMessage = document.getElementById('error-message');
         if (errorMessage) {
@@ -432,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 5000);
         }
     }
-    
+
     function showSuccess(message) {
         const successMessage = document.getElementById('success-message');
         if (successMessage) {
@@ -443,9 +439,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 3000);
         }
     }
-    
+
     function enableActionButtons() {
         if (generateHintsBtn) generateHintsBtn.disabled = false;
         if (generateSolutionBtn) generateSolutionBtn.disabled = false;
     }
-}); 
+});
