@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motion Q&A - Question Analysis and Solution Generation</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Motion Q&A</h1>
+            <p>Question Analysis and Solution Generation System</p>
+        </header>
+
+        <div id="loading-message" style="display: none;"></div>
+        <div id="error-message" style="display: none;"></div>
+        <div id="success-message" style="display: none;"></div>
+
+        <section class="input-section">
+            <div class="card">
+                <h2 class="card-title">Enter Your Question</h2>
+                <form id="question-form">
+                    <div class="input-group">
+                        <label for="question-input">Question:</label>
+                        <textarea id="question-input" placeholder="Type your question here..." required></textarea>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="question-type">Question Type:</label>
+                        <select id="question-type">
+                            <option value="math">Math</option>
+                            <option value="physics">Physics</option>
+                            <option value="chemistry">Chemistry</option>
+                            <option value="biology">Biology</option>
+                            <option value="computer_science">Computer Science</option>
+                            <option value="general_knowledge">General Knowledge</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="difficulty">Difficulty:</label>
+                        <select id="difficulty">
+                            <option value="easy">Easy</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="hard">Hard</option>
+                            <option value="expert">Expert</option>
+                        </select>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="button" id="analyze-btn" class="btn btn-primary">Analyze Question</button>
+                        <button type="submit" class="btn btn-accent">Submit Question</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <section id="analysis-result" class="result-section"></section>
+
+        <section class="actions-section">
+            <div class="card">
+                <h2 class="card-title">Actions</h2>
+                <div class="button-group">
+                    <button id="generate-hints-btn" class="btn btn-primary" disabled>Generate Hints</button>
+                    <button id="generate-solution-btn" class="btn btn-accent" disabled>Generate Solution</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="hints-result" class="result-section"></section>
+        <section id="solution-result" class="result-section"></section>
+
+        <footer>
+            <p>&copy; 2024 Motion Q&A - A Question Analysis and Solution Generation System</p>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html> 
