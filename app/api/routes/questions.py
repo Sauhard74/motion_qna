@@ -213,4 +213,47 @@ def get_solution(
             detail=f"Solution for question with ID {question_id} not found"
         )
     
-    return solution 
+    return solution
+
+# Direct generation endpoints (no database storage)
+@router.post("/generate-hints", status_code=status.HTTP_200_OK)
+def generate_hints_directly(
+    hint_request: HintRequest
+):
+    """Generate hints for a question without storing them."""
+    if not hint_request.question_content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Question content is required for direct generation"
+        )
+        
+    # Generate hints
+    hint_data = ai_service.generate_hints(
+        question_content=hint_request.question_content,
+        num_hints=hint_request.num_hints,
+        max_level=hint_request.max_level
+    )
+    
+    return [{"content": hint["content"], "level": hint["level"]} for hint in hint_data]
+
+@router.post("/generate-solution", status_code=status.HTTP_200_OK)
+def generate_solution_directly(
+    solution_request: GenerateSolutionRequest
+):
+    """Generate a solution for a question without storing it."""
+    if not solution_request.question_content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Question content is required for direct generation"
+        )
+        
+    # Generate solution
+    solution_data = ai_service.generate_solution(
+        question_content=solution_request.question_content,
+        step_by_step=solution_request.step_by_step
+    )
+    
+    return {
+        "content": solution_data["content"],
+        "steps": solution_data["steps"]
+    } 

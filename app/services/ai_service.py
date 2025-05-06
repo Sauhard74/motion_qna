@@ -3,10 +3,10 @@ import random
 from typing import List, Dict, Any, Optional
 import os
 import numpy as np
+import re
+import math
 
 import nltk
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
 from transformers import AutoTokenizer, AutoModel, pipeline
 from sentence_transformers import SentenceTransformer
 import torch
@@ -15,44 +15,42 @@ from sklearn.metrics.pairwise import cosine_similarity
 from app.core.config import settings
 from app.models.question import QuestionType
 
-# Download NLTK resources
+# Import custom tokenizer
+from app.services.custom_tokenizer import custom_sent_tokenize, custom_tokenize, get_stopwords
+
+# Try to import NLTK, but always use our custom tokenizer for sentence splitting
 try:
-    nltk.data.find('tokenizers/punkt')
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('punkt')
+    import nltk
     nltk.download('stopwords')
+    from nltk.corpus import stopwords
+    STOPWORDS = set(stopwords.words('english'))
+    
+    # We'll always use our custom tokenizer regardless of NLTK availability
+    # to avoid punkt_tab issues
+    sent_tokenize = custom_sent_tokenize
+    word_tokenize = custom_tokenize
+except ImportError:
+    # Fallback if NLTK is not installed
+    STOPWORDS = set(get_stopwords())
+    sent_tokenize = custom_sent_tokenize
+    word_tokenize = custom_tokenize
 
-# Custom sentence tokenizer to avoid punkt_tab issues
-def custom_sent_tokenize(text):
-    """Simple sentence tokenizer that splits by common sentence endings."""
-    if not text:
-        return []
-    
-    # Split by common sentence endings
-    sentences = []
-    current = ""
-    
-    for char in text:
-        current += char
-        if char in ['.', '!', '?'] and current.strip():
-            sentences.append(current.strip())
-            current = ""
-    
-    # Add any remaining text as a sentence
-    if current.strip():
-        sentences.append(current.strip())
-    
-    return sentences if sentences else [text]
-
+try:
+    from transformers import AutoTokenizer, AutoModel, pipeline
+    from sentence_transformers import SentenceTransformer
+    import torch
+    from sklearn.metrics.pairwise import cosine_similarity
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
 
 class AIService:
     """Service for AI-powered operations like hint and solution generation."""
     
     def __init__(self):
         """Initialize the AI service."""
-        self.use_transformers = True
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.use_transformers = TRANSFORMERS_AVAILABLE and settings.USE_AI_MODELS
+        self.device = "cuda" if TRANSFORMERS_AVAILABLE and torch.cuda.is_available() else "cpu"
         
         # Check if we should use models or fallback to template-based generation
         if settings.USE_AI_MODELS and self.use_transformers:
@@ -464,7 +462,12 @@ class AIService:
         Returns:
             A dictionary with the solution and optional steps.
         """
-        # Analyze the question to get context
+        # First, try to solve it as a basic equation regardless of the question analysis
+        equation_solution = self._solve_basic_equation(question_content)
+        if equation_solution:
+            return equation_solution
+            
+        # If it's not a basic equation, analyze the question and proceed normally
         question_analysis = self.analyze_question(question_content)
         
         if self.use_transformers and hasattr(self, 'generator'):
@@ -537,14 +540,7 @@ class AIService:
         """Generate solution using templates"""
         question_type = question_analysis["type"]
         keywords = question_analysis["keywords"]
-        
-        # Special case for simple math equations
-        if question_type == QuestionType.MATH:
-            # Try to parse and solve basic equations
-            question_content = question_analysis.get("original_content", "")
-            equation_solution = self._solve_basic_equation(question_content)
-            if equation_solution:
-                return equation_solution
+        question_content = question_analysis.get("original_content", "")
         
         # Get a solution template (fallback)
         solution_template = self._get_solution_template(question_type)
@@ -607,87 +603,9 @@ class AIService:
                     "steps": "\n".join([f"Step {i+1}: {step}" for i, step in enumerate(steps)])
                 }
             
-            # Try to match "find x : x + 9 = 34" pattern
-            find_pattern = r'find\s+x\s*:\s*x\s*\+\s*(\d+)\s*=\s*(\d+)'
-            matches = re.search(find_pattern, question_content, re.IGNORECASE)
-            
-            if matches:
-                # Extract the values
-                constant = int(matches.group(1))
-                result = int(matches.group(2))
-                
-                # Calculate x
-                x_value = result - constant
-                
-                # Generate solution steps
-                steps = [
-                    f"Start with the original equation: x + {constant} = {result}",
-                    f"To isolate x, subtract {constant} from both sides of the equation",
-                    f"x + {constant} - {constant} = {result} - {constant}",
-                    f"x = {result} - {constant} = {x_value}",
-                    f"Therefore, x = {x_value}"
-                ]
-                
-                return {
-                    "content": f"The solution to the equation x + {constant} = {result} is x = {x_value}.",
-                    "steps": "\n".join([f"Step {i+1}: {step}" for i, step in enumerate(steps)])
-                }
-            
-            # Try to match "find x : x - 5 = 10" pattern
-            subtract_pattern = r'find\s+x\s*:\s*x\s*-\s*(\d+)\s*=\s*(\d+)'
-            matches = re.search(subtract_pattern, question_content, re.IGNORECASE)
-            
-            if matches:
-                # Extract the values
-                constant = int(matches.group(1))
-                result = int(matches.group(2))
-                
-                # Calculate x
-                x_value = result + constant
-                
-                # Generate solution steps
-                steps = [
-                    f"Start with the original equation: x - {constant} = {result}",
-                    f"To isolate x, add {constant} to both sides of the equation",
-                    f"x - {constant} + {constant} = {result} + {constant}",
-                    f"x = {result} + {constant} = {x_value}",
-                    f"Therefore, x = {x_value}"
-                ]
-                
-                return {
-                    "content": f"The solution to the equation x - {constant} = {result} is x = {x_value}.",
-                    "steps": "\n".join([f"Step {i+1}: {step}" for i, step in enumerate(steps)])
-                }
-            
-            # Try to match "find x : 2x = 10" pattern
-            multiply_pattern = r'find\s+x\s*:\s*(\d+)x\s*=\s*(\d+)'
-            matches = re.search(multiply_pattern, question_content, re.IGNORECASE)
-            
-            if matches:
-                # Extract the values
-                coefficient = int(matches.group(1))
-                result = int(matches.group(2))
-                
-                # Calculate x
-                x_value = result / coefficient
-                
-                # Generate solution steps
-                steps = [
-                    f"Start with the original equation: {coefficient}x = {result}",
-                    f"To isolate x, divide both sides of the equation by {coefficient}",
-                    f"{coefficient}x / {coefficient} = {result} / {coefficient}",
-                    f"x = {result} / {coefficient} = {x_value}",
-                    f"Therefore, x = {x_value}"
-                ]
-                
-                return {
-                    "content": f"The solution to the equation {coefficient}x = {result} is x = {x_value}.",
-                    "steps": "\n".join([f"Step {i+1}: {step}" for i, step in enumerate(steps)])
-                }
-            
-            # General x + number = number pattern
-            general_addition = r'x\s*\+\s*(\d+)\s*=\s*(\d+)'
-            matches = re.search(general_addition, question_content)
+            # Try general pattern: "x + 9 = 34"
+            simple_addition = r'x\s*\+\s*(\d+)\s*=\s*(\d+)'
+            matches = re.search(simple_addition, question_content)
             if matches:
                 constant = int(matches.group(1))
                 result = int(matches.group(2))
@@ -703,7 +621,45 @@ class AIService:
                     "content": f"The solution is x = {x_value}.",
                     "steps": "\n".join([f"Step {i+1}: {step}" for i, step in enumerate(steps)])
                 }
-            
+                
+            # Try pattern for x - constant = result
+            subtraction_pattern = r'x\s*-\s*(\d+)\s*=\s*(\d+)'
+            matches = re.search(subtraction_pattern, question_content)
+            if matches:
+                constant = int(matches.group(1))
+                result = int(matches.group(2))
+                x_value = result + constant
+                
+                steps = [
+                    f"Start with the equation: x - {constant} = {result}",
+                    f"Add {constant} to both sides: x = {result} + {constant}",
+                    f"Solve for x: x = {x_value}"
+                ]
+                
+                return {
+                    "content": f"The solution is x = {x_value}.",
+                    "steps": "\n".join([f"Step {i+1}: {step}" for i, step in enumerate(steps)])
+                }
+                
+            # Try pattern for constant * x = result
+            multiplication_pattern = r'(\d+)\s*\*?\s*x\s*=\s*(\d+)'
+            matches = re.search(multiplication_pattern, question_content)
+            if matches:
+                constant = int(matches.group(1))
+                result = int(matches.group(2))
+                x_value = result / constant
+                
+                steps = [
+                    f"Start with the equation: {constant}x = {result}",
+                    f"Divide both sides by {constant}: x = {result} / {constant}",
+                    f"Solve for x: x = {x_value}"
+                ]
+                
+                return {
+                    "content": f"The solution is x = {x_value}.",
+                    "steps": "\n".join([f"Step {i+1}: {step}" for i, step in enumerate(steps)])
+                }
+                
             return None
             
         except Exception as e:

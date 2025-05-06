@@ -148,24 +148,56 @@ document.addEventListener('DOMContentLoaded', function() {
     
     async function generateHints() {
         try {
-            if (!currentQuestionId) {
-                showError('No question selected');
+            const questionContent = questionInput.value.trim();
+            if (!questionContent) {
+                showError('Please enter a question');
                 return;
             }
             
             // Show loading state
             showLoading('Generating hints...');
             
-            // Send hint generation request
-            const response = await fetch(`${apiBaseUrl}/questions/${currentQuestionId}/hints`, {
+            let response;
+            let data;
+            
+            // Try to use the persistent API if we have a question ID
+            if (currentQuestionId) {
+                try {
+                    // Send hint generation request with question ID
+                    response = await fetch(`${apiBaseUrl}/questions/${currentQuestionId}/hints`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            question_id: currentQuestionId,
+                            num_hints: 3, // Default to 3 hints
+                            max_level: 3  // Up to level 3 difficulty
+                        }),
+                    });
+                    
+                    // If successful, use this response
+                    if (response.ok) {
+                        data = await response.json();
+                        displayHints(data);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error with persistent hints, trying direct generation:', error);
+                }
+            }
+            
+            // If we get here, either we don't have a question ID or the persistent API failed
+            // Use direct generation instead
+            response = await fetch(`${apiBaseUrl}/generate-hints`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    question_id: currentQuestionId,
-                    num_hints: 3, // Default to 3 hints
-                    max_level: 3  // Up to level 3 difficulty
+                    question_content: questionContent,
+                    num_hints: 3,
+                    max_level: 3
                 }),
             });
             
@@ -173,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(`Error: ${response.status}`);
             }
             
-            const data = await response.json();
+            data = await response.json();
             
             // Display hints
             displayHints(data);
@@ -188,36 +220,100 @@ document.addEventListener('DOMContentLoaded', function() {
     
     async function generateSolution() {
         try {
-            if (!currentQuestionId) {
-                showError('No question selected');
+            const questionContent = questionInput.value.trim();
+            if (!questionContent) {
+                showError('Please enter a question');
                 return;
             }
             
             // Show loading state
             showLoading('Generating solution...');
             
-            // Send solution generation request
-            const response = await fetch(`${apiBaseUrl}/questions/${currentQuestionId}/solution`, {
+            let response;
+            let data;
+            
+            // If it looks like a math equation, try the equation solver first
+            const isMathProblem = questionTypeSelect.value === 'math' || 
+                                  /[-+*/=]/.test(questionContent) ||
+                                  /solve|equation|find|calculate|x\s*[-+*/=]/.test(questionContent.toLowerCase());
+                                  
+            if (isMathProblem) {
+                try {
+                    // Try the equation solver endpoint first
+                    response = await fetch(`${apiBaseUrl}/solve-equation`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            question_content: questionContent,
+                            step_by_step: true
+                        }),
+                    });
+                    
+                    if (response.ok) {
+                        data = await response.json();
+                        displaySolution(data);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Equation solver failed, falling back to normal generation:', error);
+                }
+            }
+            
+            // Try to use the persistent API if we have a question ID
+            if (currentQuestionId) {
+                try {
+                    // Send solution generation request with question ID
+                    response = await fetch(`${apiBaseUrl}/questions/${currentQuestionId}/solution`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            question_id: currentQuestionId,
+                            step_by_step: true
+                        }),
+                    });
+                    
+                    // If the solution already exists, try to get it
+                    if (response.status === 400) {
+                        const getSolutionResponse = await fetch(`${apiBaseUrl}/questions/${currentQuestionId}/solution`);
+                        if (getSolutionResponse.ok) {
+                            data = await getSolutionResponse.json();
+                            displaySolution(data);
+                            return;
+                        }
+                    }
+                    // If successful, use this response
+                    else if (response.ok) {
+                        data = await response.json();
+                        displaySolution(data);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error with persistent solution, trying direct generation:', error);
+                }
+            }
+            
+            // If we get here, either we don't have a question ID or the persistent API failed
+            // Use direct generation instead
+            response = await fetch(`${apiBaseUrl}/generate-solution`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    question_id: currentQuestionId,
+                    question_content: questionContent,
                     step_by_step: true
                 }),
             });
             
             if (!response.ok) {
-                // If solution already exists, try to get it
-                if (response.status === 400) {
-                    await getSolution();
-                    return;
-                }
                 throw new Error(`Error: ${response.status}`);
             }
             
-            const data = await response.json();
+            data = await response.json();
             
             // Display solution
             displaySolution(data);
@@ -227,26 +323,6 @@ document.addEventListener('DOMContentLoaded', function() {
             showError('Failed to generate solution: ' + error.message);
         } finally {
             hideLoading();
-        }
-    }
-    
-    async function getSolution() {
-        try {
-            // Get existing solution
-            const response = await fetch(`${apiBaseUrl}/questions/${currentQuestionId}/solution`);
-            
-            if (!response.ok) {
-                throw new Error(`Error: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            // Display solution
-            displaySolution(data);
-            
-        } catch (error) {
-            console.error('Error getting solution:', error);
-            showError('Failed to get solution: ' + error.message);
         }
     }
     

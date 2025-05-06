@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi import Request
 from pathlib import Path
 
-from app.api.routes import questions_router
+from app.api.routes import questions_router, direct_router
 from app.core.config import settings
 
 # Create FastAPI application
@@ -29,6 +29,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(questions_router, prefix=settings.API_V1_STR)
+app.include_router(direct_router, prefix=settings.API_V1_STR)
 
 # Set up static files
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")

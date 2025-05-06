@@ -4,6 +4,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.models.question import QuestionType, QuestionDifficulty
+from app.core.enums import DifficultyLevel
 
 
 # ---- Base models ----
@@ -112,12 +113,14 @@ class QuestionAnalysisRequest(BaseModel):
 
 class HintRequest(BaseModel):
     """Schema for hint generation request."""
-    question_id: int = Field(..., description="ID of the question to generate hints for")
+    question_id: Optional[int] = Field(None, description="ID of the question to generate hints for")
+    question_content: Optional[str] = Field(None, description="Content of the question to generate hints for (used for direct generation)")
     num_hints: int = Field(1, description="Number of hints to generate")
     max_level: int = Field(3, description="Maximum hint level (difficulty)")
 
 
 class GenerateSolutionRequest(BaseModel):
     """Schema for solution generation request."""
-    question_id: int = Field(..., description="ID of the question to generate a solution for")
+    question_id: Optional[int] = Field(None, description="ID of the question to generate a solution for")
+    question_content: Optional[str] = Field(None, description="Content of the question to generate a solution for (used for direct generation)")
     step_by_step: bool = Field(True, description="Whether to generate a step-by-step solution") 
