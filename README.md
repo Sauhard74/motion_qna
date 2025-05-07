@@ -64,6 +64,41 @@ python run.py --host localhost --port 8000 --no-models
 
 ### Docker Deployment
 
+#### Using the Deployment Script
+
+We provide a convenient deployment script to manage the Docker container:
+
+```bash
+# Make the script executable (first time only)
+chmod +x deploy.sh
+
+# Show available commands
+./deploy.sh help
+
+# Build the Docker image
+./deploy.sh build
+
+# Start the container
+./deploy.sh start
+
+# Check container status
+./deploy.sh status
+
+# View logs
+./deploy.sh logs
+
+# Rebuild and restart the container
+./deploy.sh rebuild
+
+# Stop the container
+./deploy.sh stop
+
+# Clean up Docker resources
+./deploy.sh clean
+```
+
+#### Manual Docker Commands
+
 1. Build the Docker image
    ```bash
    docker build -t motion_qna:latest .
@@ -119,12 +154,14 @@ motion_qna/
 ├── tests/                # Unit and integration tests
 ├── Dockerfile            # Docker configuration
 ├── requirements.txt      # Python dependencies
+├── deploy.sh             # Deployment script
 └── run.py                # Application entry point
 ```
 
-## Deployment
+## Documentation
 
-For detailed deployment instructions, see [DEPLOYMENT_STEPS.md](DEPLOYMENT_STEPS.md).
+- [DEPLOYMENT_STEPS.md](DEPLOYMENT_STEPS.md) - Detailed deployment instructions
+- [FRONTEND_GUIDE.md](FRONTEND_GUIDE.md) - Guide for frontend development
 
 ## Contributing
 
