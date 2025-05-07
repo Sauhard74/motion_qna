@@ -2,6 +2,10 @@
 
 A question analysis and solution generation system for educational content.
 
+<img width="1512" alt="Screenshot 2025-05-06 at 6 24 54 PM" src="https://github.com/user-attachments/assets/db215f09-953a-413c-a7ce-3b9cd2f6f095" />
+<img width="1480" alt="Screenshot 2025-05-06 at 6 24 47 PM" src="https://github.com/user-attachments/assets/627054dc-d076-4208-b5a6-aff7ef706067" />
+
+
 ## Overview
 
 Motion Q&A is an AI-powered application that helps students with educational questions in various subjects including mathematics, physics, chemistry, biology, and computer science. The application can:
