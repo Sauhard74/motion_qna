@@ -128,20 +128,3 @@ motion_qna/
 └── run.py                # Application entry point
 ```
 
-## Deployment
-
-For detailed deployment instructions, see [DEPLOYMENT_STEPS.md](DEPLOYMENT_STEPS.md).
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- FastAPI for the web framework
-- NLTK for natural language processing
-- The open-source community for various libraries used in this project 
